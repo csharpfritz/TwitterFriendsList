@@ -55,7 +55,7 @@ namespace TwitterFollowerLists.Web.Pages
 			// Ensure that we can get some information
 
 			var usersFriends = await Tweetinvi.UserAsync.GetFriendIds(twitterId, 5000);
-			ListMemberCount = usersFriends.Count();
+			ListMemberCount = usersFriends.Count() + 1;
 			var membersToAdd = usersFriends.Select(f => new UserIdentifier(f));
 			var list = await TwitterListAsync.GetExistingList(ListNameSlug, LoggedInTwitterId);
 			if (list == null)
@@ -90,6 +90,8 @@ namespace TwitterFollowerLists.Web.Pages
 				}
 			}
 
+			NoOfMembersToAdd = membersToAdd.Count();
+
 			// Need to limit to 5000 accounts
 			if (DoIt || !_env.IsDevelopment())
 			{
@@ -111,6 +113,8 @@ namespace TwitterFollowerLists.Web.Pages
 				ResponseString = "Nothing added in Development Mode";
 			}
 
+			NoOfActualMembers = (await list.GetMembersAsync(5000)).Count();
+
 			var rateLimits = await RateLimitAsync.GetCurrentCredentialsRateLimits();
 
 		}
@@ -121,6 +125,8 @@ namespace TwitterFollowerLists.Web.Pages
 		public string ListNameSlug { get => ListName.ToLower().Replace(" ", "-"); }
 		public long ListMemberCount { get; set; }
 		public string ResponseString { get; set; }
+		public int NoOfMembersToAdd { get; set; }
+		public int NoOfActualMembers { get; set; }
 
 		private async Task<(string consumerKey, string consumerSecret, string accessToken, string accessTokenSecret)> GetTwitterAuthKeys()
 		{
