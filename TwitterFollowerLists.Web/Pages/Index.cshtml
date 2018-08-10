@@ -4,4 +4,13 @@
     ViewData["Title"] = "Home page";
 }
 
-Mining Friends of Twitter Id: @Model.TwitterId
+<h3>Mining Friends of Twitter Id: <a href="https://twitter.com/@Model.TwitterId" target="_blank">@Model.TwitterId</a></h3>
+
+<p>
+    List <a href="https://twitter.com/@Model.LoggedInTwitterId/lists/@Model.ListNameSlug" target="_blank"><strong>@Model.ListName</strong></a>
+    with about <strong>@Model.ListMemberCount</strong> members.
+</p>
+
+<p>
+    AddMultipleMembersToList() finished with result: @Model.ResponseString
+</p>
