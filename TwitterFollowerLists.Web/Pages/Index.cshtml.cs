@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -42,6 +43,7 @@ namespace TwitterFollowerLists.Web.Pages
 				Redirect("/Error");
 			}
 
+			var sw = new Stopwatch();
 			var (consumerKey, consumerSecret, accessToken, accessTokenSecret) = await GetTwitterAuthKeys();
 
 			ExceptionHandler.SwallowWebExceptions = false;
@@ -54,8 +56,11 @@ namespace TwitterFollowerLists.Web.Pages
 
 			// Ensure that we can get some information
 
+			sw.Start();
 			var usersFriends = await Tweetinvi.UserAsync.GetFriendIds(twitterId, 5000);
+			sw.Stop();
 			ListMemberCount = usersFriends.Count() + 1;
+			_logger.LogInformation($"TweetInvi command ({sw.ElapsedMilliseconds}ms) UserAsync.GetFriendIds() for {{{twitterId}}} found {ListMemberCount} friends");
 			var membersToAdd = usersFriends.Select(f => new UserIdentifier(f));
 			var list = await TwitterListAsync.GetExistingList(ListNameSlug, LoggedInTwitterId);
 			if (list == null)
@@ -74,7 +79,10 @@ namespace TwitterFollowerLists.Web.Pages
 					// PrivacyMode = PrivacyMode.Private,
 					Description = $"The list of accounts that @{twitterId} follows as of {DateTime.UtcNow.ToLongDateString()}. Should have {membersToAdd.Count()} members."
 				};
+				sw.Restart();
 				var existingMembers = await list.GetMembersAsync(5000);
+				sw.Stop();
+				_logger.LogInformation($"TweetInvi command ({sw.ElapsedMilliseconds}ms) list.GetMembersAsync() for {{{list.Slug}}} found {existingMembers.Count()} members");
 				membersToAdd = membersToAdd.Where(m => !existingMembers.Any(existing => m.Id == existing.Id));
 				if (DoIt || !_env.IsDevelopment())
 				{
@@ -96,15 +104,17 @@ namespace TwitterFollowerLists.Web.Pages
 			if (DoIt || !_env.IsDevelopment())
 			{
 				await list.AddMemberAsync(await UserAsync.GetUserFromScreenName(twitterId));
+				sw.Restart();
 				var result = await list.AddMultipleMembersAsync(membersToAdd);
+				sw.Stop();
 				ResponseString = result.ToString();
 				if (result == MultiRequestsResult.Success)
 				{
-					_logger.LogInformation($"AddMultipleMembersToList: Adding {membersToAdd.Count()} to list {{{ListName}}} finished with result: {result}.");
+					_logger.LogInformation($"TweetInvi command ({sw.ElapsedMilliseconds}ms) list.AddMultipleMembersAsync() for {{{list.Slug}}} adding {membersToAdd.Count()} members finished with result: {result}");
 				}
 				else
 				{
-					_logger.LogError($"AddMultipleMembersToList: Adding {membersToAdd.Count()} to list {{{ListName}}} finished with result: {result}.");
+					_logger.LogError($"TweetInvi command ({sw.ElapsedMilliseconds}ms) list.AddMultipleMembersAsync() for {{{list.Slug}}} adding {membersToAdd.Count()} members finished with result: {result}");
 				}
 			}
 			else
@@ -113,7 +123,10 @@ namespace TwitterFollowerLists.Web.Pages
 				ResponseString = "Nothing added in Development Mode";
 			}
 
+			sw.Restart();
 			NoOfActualMembers = (await list.GetMembersAsync(5000)).Count();
+			sw.Stop();
+			_logger.LogInformation($"TweetInvi command ({sw.ElapsedMilliseconds}ms) list.GetMembersAsync() for {{{list.Slug}}} found {NoOfActualMembers} members");
 
 			var rateLimits = await RateLimitAsync.GetCurrentCredentialsRateLimits();
 
